@@ -16,7 +16,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 
-from fabric.reference_routes.route_schema import PydanticRouteModelsFabric, CsvMode, CsvError
+from fabric.reference_routes.route_schema import (
+    PydanticRouteModelsFabric,
+    CsvMode,
+    CsvError,
+)
 from fabric.common.crud import (
     resolve_crud,
     CRUDBaseCommonMethodType,
@@ -51,7 +55,8 @@ def generate_routes_pack(
     include_in_schema=True,
     default_offset_limit: tuple[int, int] = (0, 100),
     custom_route_awaitable: dict[Method, CRUDBaseCommonMethodType] = None,
-    allowed_methods: set[Method] = None,
+    allowed_methods: list[Method] = None,
+    excluded_methods: list[Method] = None,
     csv_preparer: Callable[
         [AsyncSession, dict[str, ...], CRUDBase], Awaitable[dict[str, ...]]
     ] = None,
@@ -59,7 +64,9 @@ def generate_routes_pack(
     tags = tags or [router_prefix.strip("/").replace("-", " ")]
     crud, get_crud = resolve_crud(crud)
     custom_route_awaitable = custom_route_awaitable or {}
-    allowed_methods = allowed_methods or {m for m in list(Method)}
+    allowed_methods = allowed_methods or list(Method)
+    excluded_methods = excluded_methods or []
+    allowed_methods = set(allowed_methods).difference(excluded_methods)
 
     router = APIRouter(
         prefix=router_prefix, tags=tags, include_in_schema=include_in_schema
@@ -221,7 +228,7 @@ def generate_routes_pack(
         "/{identifier}",
         response_class=Response,
         name=f"Change {common_name} object",
-        include_in_schema=Method.patch in allowed_methods,
+        include_in_schema=Method.put in allowed_methods,
     )
     @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
     async def change_common(
