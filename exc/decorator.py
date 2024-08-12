@@ -3,7 +3,7 @@ from functools import wraps
 from fastapi import HTTPException
 from sqlalchemy.exc import StatementError, InvalidRequestError
 
-from exc import DataBaseException
+from fabric.exc import DataBaseException
 
 
 def db_exception_wrapper(*exception: type[DataBaseException]) -> ():

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql import Select
 
-from exc import NoResultFoundException
+from fabric.exc import NoResultFoundException
 
 
 Base = declarative_base()
