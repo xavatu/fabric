@@ -4,7 +4,7 @@ from functools import lru_cache
 from fastapi import HTTPException
 from pydantic import BaseModel, ValidationError, validator
 
-from fabric.common.schema import OrmBaseModel, AllOptional
+from common.schema import OrmBaseModel, AllOptional
 
 BasePydanticClass: NewType = BaseModel
 

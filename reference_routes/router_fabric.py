@@ -17,13 +17,13 @@ from starlette.concurrency import run_in_threadpool
 
 
 from .route_schema import PydanticRouteModelsFabric, CsvMode, CsvError
-from fabric.common.crud import (
+from common.crud import (
     resolve_crud,
     CRUDBaseCommonMethodType,
     CrudType,
     CRUDBase,
 )
-from fabric.exc import (
+from exc import (
     NoResultFoundException,
     IntegrityErrorException,
     db_exception_wrapper,
