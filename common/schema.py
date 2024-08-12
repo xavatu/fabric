@@ -1,3 +1,5 @@
+from fastapi import Query
+from typing import Optional
 from pydantic import BaseModel
 from pydantic._internal._model_construction import ModelMetaclass
 
@@ -37,5 +39,18 @@ class AllOptional(ModelMetaclass):
             if not field.startswith("__"):
                 annotations[field] = annotations[field] | None
                 namespaces[field] = None
+        namespaces["__annotations__"] = annotations
+        return super().__new__(mcls, name, bases, namespaces, **kwargs)
+
+
+class AllQueryOptional(type(BaseModel)):
+    def __new__(mcls, name, bases, namespaces, **kwargs):
+        annotations = namespaces.get("__annotations__", {})
+        for base in bases:
+            annotations.update(getattr(base, "__annotations__", {}))
+        for field_name, field_type in annotations.items():
+            if not field_name.startswith("__"):
+                annotations[field_name] = Optional[field_type]
+                namespaces[field_name] = Query(None)
         namespaces["__annotations__"] = annotations
         return super().__new__(mcls, name, bases, namespaces, **kwargs)

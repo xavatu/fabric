@@ -4,7 +4,7 @@ from functools import lru_cache
 from fastapi import HTTPException
 from pydantic import BaseModel, ValidationError, validator
 
-from fabric.common.schema import OrmBaseModel, AllOptional
+from fabric.common.schema import OrmBaseModel, AllOptional, AllQueryOptional
 
 BasePydanticClass: NewType = BaseModel
 IdentifierType = TypeVar("IdentifierType", bound=type[Enum])
@@ -39,12 +39,20 @@ class _Convertor(OrmBaseModel, metaclass=AllOptional):
         raise NotImplementedError()
 
 
+class _QueryFilter(OrmBaseModel, metaclass=AllQueryOptional): ...
+
+
 ResponseClass: NewType = _Response
 PatchClass: NewType = _Patch
 ConvertorClass: NewType = _Convertor
+QueryFilterClass: NewType = _QueryFilter
 
 _fabric_type: TypeAlias = (
-    type | type[ResponseClass] | type[ConvertorClass] | type[PatchClass]
+    type
+    | type[ResponseClass]
+    | type[ConvertorClass]
+    | type[PatchClass]
+    | type[QueryFilterClass]
 )
 
 
@@ -125,6 +133,14 @@ class PydanticRouteModelsFabric:
             self._base_class.__name__ + "Convertor",
             _ConvertorClass,
             self.response,
+        )
+
+    @property
+    @lru_cache(None)
+    def query_filter(self) -> type[QueryFilterClass]:
+        return self._class_creator(
+            self._base_class.__name__ + "Filter",
+            *(self._base_class, QueryFilterClass),
         )
 
 

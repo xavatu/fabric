@@ -79,21 +79,25 @@ def generate_routes_pack(
     @router.get(
         "",
         response_model=list[fabric.response],
-        name=f"Get {common_name} object",
+        name=f"Get all {common_name} objects",
         include_in_schema=Method.get_all in allowed_methods,
     )
     async def get_all_commons(
+        filter_model: fabric.query_filter = Depends(fabric.query_filter),
         offset: int = default_offset_limit[0],
         limit: int = default_offset_limit[-1],
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):
+        filters_dict = filter_model.model_dump(exclude_none=True)
         not_found(Method.get_all)
         custom_method = custom_route_awaitable.get(Method.get_all)
         if custom_method:
             return await custom_method(session, offset, limit)
 
-        return await method_crud.get_multi(session, offset=offset, limit=limit)
+        return await method_crud.get_multi(
+            session, filter_dict=filters_dict, offset=offset, limit=limit
+        )
 
     @router.get(
         "/{identifier}",
@@ -102,7 +106,7 @@ def generate_routes_pack(
         include_in_schema=Method.get_one in allowed_methods,
     )
     @db_exception_wrapper(NoResultFoundException)
-    async def get_common(
+    async def get_one_common(
         identifier: str,  # noqa
         identifier_type: fabric.identifier = fabric.identifier_id,  # noqa
         filter_dict: dict = Depends(fabric.convertor.get_identity_dict),
@@ -113,7 +117,6 @@ def generate_routes_pack(
         custom_method = custom_route_awaitable.get(Method.get_one)
         if custom_method:
             return await custom_method(session, filter_dict)
-
         result = await method_crud.get_one(session, filter_dict=filter_dict)
 
         await session.commit()
