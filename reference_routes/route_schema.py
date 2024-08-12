@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError, validator
 from fabric.common.schema import OrmBaseModel, AllOptional
 
 BasePydanticClass: NewType = BaseModel
+IdentifierType = TypeVar("IdentifierType", bound=type[Enum])
 
 
 class _Response(OrmBaseModel):
@@ -16,10 +17,7 @@ class _Response(OrmBaseModel):
         from_attributes = True
 
 
-ResponseClass: NewType = _Response
-PatchClass: NewType = BaseModel
-
-IdentifierType = TypeVar("IdentifierType", bound=type[Enum])
+class _Patch(OrmBaseModel, metaclass=AllOptional): ...
 
 
 class _Convertor(OrmBaseModel, metaclass=AllOptional):
@@ -41,7 +39,9 @@ class _Convertor(OrmBaseModel, metaclass=AllOptional):
         raise NotImplementedError()
 
 
-ConvertorClass = _Convertor
+ResponseClass: NewType = _Response
+PatchClass: NewType = _Patch
+ConvertorClass: NewType = _Convertor
 
 _fabric_type: TypeAlias = (
     type | type[ResponseClass] | type[ConvertorClass] | type[PatchClass]
@@ -102,7 +102,7 @@ class PydanticRouteModelsFabric:
         if self._patch_class is not None:
             parents = (self._patch_class,)
         else:
-            parents = (self.base, ResponseClass)
+            parents = (self.base, PatchClass)
         return self._class_creator(
             self._base_class.__name__ + "Optional", *parents
         )
