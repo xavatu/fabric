@@ -87,7 +87,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType]):
     ) -> ModelType:
         obj_in_data = obj_in
         if isinstance(obj_in_data, BaseModel):
-            obj_in_data = jsonable_encoder(obj_in)
+            obj_in_data = obj_in.model_dump()
         db_obj = self._model(**obj_in_data)  # type: ignore
         session.add(db_obj)
         await session.flush([db_obj])
