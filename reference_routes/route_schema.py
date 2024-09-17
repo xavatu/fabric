@@ -1,8 +1,12 @@
 from enum import Enum
 from typing import NewType, TypeVar, TypeAlias
 from functools import lru_cache
-from fastapi import HTTPException
-from pydantic import BaseModel, ValidationError, validator
+from pydantic import (
+    BaseModel,
+    ValidationError,
+    validator,
+    model_validator,
+)
 
 from fabric.common.schema import OrmBaseModel, AllOptional, AllQueryOptional
 
@@ -11,8 +15,6 @@ IdentifierType = TypeVar("IdentifierType", bound=type[Enum])
 
 
 class _Response(OrmBaseModel):
-    id: int
-
     class Config:
         from_attributes = True
 
@@ -20,39 +22,32 @@ class _Response(OrmBaseModel):
 class _Patch(OrmBaseModel, metaclass=AllOptional): ...
 
 
-class _Convertor(OrmBaseModel, metaclass=AllOptional):
-    @classmethod
-    def _base_get_identity_dict(
-        cls, identifier_type: IdentifierType, identifier: str
-    ):
-        try:
-            return cls(**{identifier_type.value: identifier}).dict(
-                exclude_none=True
-            )
-        except ValidationError as e:
-            raise HTTPException(status_code=422, detail=e.errors())
-
-    @classmethod
-    def get_identity_dict(
-        cls, identifier_type: IdentifierType, identifier: str
-    ):
-        raise NotImplementedError()
-
-
 class _QueryFilter(OrmBaseModel, metaclass=AllQueryOptional): ...
+
+
+class _IdentityFilterClass(OrmBaseModel, metaclass=AllQueryOptional):
+    @model_validator(mode="before")
+    def at_least_one_field_required(cls, kwargs):
+        valids = {}
+        for k, v in kwargs.items():
+            if k in cls.model_fields.keys() and v is not None:
+                valids[k] = v
+        if len(valids) < 1:
+            raise ValueError("At least one field required")
+        return valids
 
 
 ResponseClass: NewType = _Response
 PatchClass: NewType = _Patch
-ConvertorClass: NewType = _Convertor
 QueryFilterClass: NewType = _QueryFilter
+IdentityFilterClass: NewType = _IdentityFilterClass
 
 _fabric_type: TypeAlias = (
     type
     | type[ResponseClass]
-    | type[ConvertorClass]
     | type[PatchClass]
     | type[QueryFilterClass]
+    | type[IdentityFilterClass]
 )
 
 
@@ -62,32 +57,20 @@ class PydanticRouteModelsFabric:
     def __init__(
         self,
         base_class: type[BasePydanticClass],
-        identifier: IdentifierType,
+        identifier: type[BasePydanticClass],
         *,
-        identifier_id: str = "id",
         response_class: type[ResponseClass] = None,
         patch_class: type[PatchClass] = None,
-        convertor_class: type[ConvertorClass] = None,
     ):
         self._base_class = base_class
         self._identifier = identifier
-        self._identifier_id = identifier_id
         self._response_class = response_class
         self._patch_class = patch_class
-        self._convertor_class = convertor_class
 
     @staticmethod
     def _class_creator(name, *bases: type[BaseModel]) -> _fabric_type:
         """Just create a class with random name cause fastapi map issues"""
         return type(name, bases, {})
-
-    @property
-    def identifier(self):
-        return self._identifier
-
-    @property
-    def identifier_id(self):
-        return getattr(self.identifier, self._identifier_id)
 
     @property
     def base(self) -> type[BasePydanticClass]:
@@ -117,30 +100,18 @@ class PydanticRouteModelsFabric:
 
     @property
     @lru_cache(None)
-    def convertor(self) -> type[ConvertorClass]:
-        identifier_enum = self.identifier
-
-        class _ConvertorClass(
-            self._base_class, self._convertor_class or ConvertorClass
-        ):
-            @classmethod
-            def get_identity_dict(
-                cls, identifier_type: identifier_enum, identifier: str
-            ):
-                return cls._base_get_identity_dict(identifier_type, identifier)
-
-        return self._class_creator(
-            self._base_class.__name__ + "Convertor",
-            _ConvertorClass,
-            self.response,
-        )
-
-    @property
-    @lru_cache(None)
     def query_filter(self) -> type[QueryFilterClass]:
         return self._class_creator(
             self._base_class.__name__ + "Filter",
             *(self._base_class, QueryFilterClass),
+        )
+
+    @property
+    @lru_cache(None)
+    def identity_filter(self) -> type[QueryFilterClass]:
+        return self._class_creator(
+            self._identifier.__name__ + "IdentityFilter",
+            *(self._identifier, IdentityFilterClass),
         )
 
 

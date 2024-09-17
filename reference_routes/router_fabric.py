@@ -15,7 +15,6 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
-
 from fabric.reference_routes.route_schema import (
     PydanticRouteModelsFabric,
     CsvMode,
@@ -31,6 +30,7 @@ from fabric.exc import (
     NoResultFoundException,
     IntegrityErrorException,
     db_exception_wrapper,
+    make_dependable,
 )
 
 
@@ -89,32 +89,35 @@ def generate_routes_pack(
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):
-        filters_dict = filter_model.model_dump(exclude_none=True)
         not_found(Method.get_all)
         custom_method = custom_route_awaitable.get(Method.get_all)
+        filter_dict = filter_model.model_dump(exclude_none=True)
+
         if custom_method:
             return await custom_method(session, offset, limit)
 
         return await method_crud.get_multi(
-            session, filter_dict=filters_dict, offset=offset, limit=limit
+            session, filter_dict=filter_dict, offset=offset, limit=limit
         )
 
     @router.get(
-        "/{identifier}",
+        "/",
         response_model=fabric.response,
         name=f"Get single {common_name} object",
         include_in_schema=Method.get_one in allowed_methods,
     )
     @db_exception_wrapper(NoResultFoundException)
     async def get_one_common(
-        identifier: str,  # noqa
-        identifier_type: fabric.identifier = fabric.identifier_id,  # noqa
-        filter_dict: dict = Depends(fabric.convertor.get_identity_dict),
+        identity_filter: fabric.identity_filter = Depends(
+            make_dependable(fabric.identity_filter)
+        ),
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):
         not_found(Method.get_one)
         custom_method = custom_route_awaitable.get(Method.get_one)
+        filter_dict = identity_filter.model_dump(exclude_none=True)
+
         if custom_method:
             return await custom_method(session, filter_dict)
         result = await method_crud.get_one(session, filter_dict=filter_dict)
@@ -139,7 +142,7 @@ def generate_routes_pack(
         if custom_method:
             return await custom_method(session, payload)
 
-        result = fabric.response.from_orm(
+        result = fabric.response.model_validate(
             await method_crud.create(session, obj_in=payload)
         )
         await session.commit()
@@ -202,14 +205,15 @@ def generate_routes_pack(
     @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
     async def update_common_fields(
         payload: fabric.patch,
-        identifier: str,  # noqa
-        identifier_type: fabric.identifier = fabric.identifier_id,  # noqa
-        filter_dict: dict = Depends(fabric.convertor.get_identity_dict),
+        identity_filter: fabric.identity_filter = Depends(
+            make_dependable(fabric.identity_filter)
+        ),
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):
         not_found(Method.patch)
         custom_method = custom_route_awaitable.get(Method.patch)
+        filter_dict = identity_filter.model_dump(exclude_none=True)
 
         if custom_method:
             return await custom_method(session, filter_dict, payload, True)
@@ -236,14 +240,15 @@ def generate_routes_pack(
     @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
     async def change_common(
         payload: fabric.base,
-        identifier: str,  # noqa
-        identifier_type: fabric.identifier = fabric.identifier_id,  # noqa
-        filter_dict: dict = Depends(fabric.convertor.get_identity_dict),
+        identity_filter: fabric.identity_filter = Depends(
+            make_dependable(fabric.identity_filter)
+        ),
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):
         not_found(Method.put)
         custom_method = custom_route_awaitable.get(Method.put)
+        filter_dict = identity_filter.model_dump(exclude_none=True)
 
         if custom_method:
             return await custom_method(session, filter_dict, payload, False)
@@ -264,14 +269,15 @@ def generate_routes_pack(
     )
     @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
     async def delete_common(
-        identifier: str,  # noqa
-        identifier_type: fabric.identifier = fabric.identifier_id,  # noqa
-        filter_dict: dict = Depends(fabric.convertor.get_identity_dict),
+        identity_filter: fabric.identity_filter = Depends(
+            make_dependable(fabric.identity_filter)
+        ),
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):
         not_found(Method.delete)
         custom_method = custom_route_awaitable.get(Method.delete)
+        filter_dict = identity_filter.model_dump(exclude_none=True)
 
         if custom_method:
             return await custom_method(session, filter_dict)

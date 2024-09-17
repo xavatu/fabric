@@ -43,7 +43,7 @@ class AllOptional(ModelMetaclass):
         return super().__new__(mcls, name, bases, namespaces, **kwargs)
 
 
-class AllQueryOptional(type(BaseModel)):
+class AllQueryOptional(ModelMetaclass):
     def __new__(mcls, name, bases, namespaces, **kwargs):
         annotations = namespaces.get("__annotations__", {})
         for base in bases:
