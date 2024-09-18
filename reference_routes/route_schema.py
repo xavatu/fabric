@@ -108,7 +108,7 @@ class PydanticRouteModelsFabric:
 
     @property
     @lru_cache(None)
-    def identity_filter(self) -> type[QueryFilterClass]:
+    def identity_filter(self) -> type[IdentityFilterClass]:
         return self._class_creator(
             self._identifier.__name__ + "IdentityFilter",
             *(self._identifier, IdentityFilterClass),
