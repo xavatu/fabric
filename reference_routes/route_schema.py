@@ -57,15 +57,17 @@ class PydanticRouteModelsFabric:
     def __init__(
         self,
         base_class: type[BasePydanticClass],
-        identifier: type[BasePydanticClass],
+        identity_class: type[BasePydanticClass],
         *,
-        response_class: type[ResponseClass] = None,
-        patch_class: type[PatchClass] = None,
+        response_class: type[BasePydanticClass] = None,
+        patch_class: type[BasePydanticClass] = None,
+        query_class: type[BasePydanticClass] = None,
     ):
         self._base_class = base_class
-        self._identifier = identifier
+        self._identity_class = identity_class
         self._response_class = response_class
         self._patch_class = patch_class
+        self._query_class = query_class
 
     @staticmethod
     def _class_creator(name, *bases: type[BaseModel]) -> _fabric_type:
@@ -79,39 +81,46 @@ class PydanticRouteModelsFabric:
     @property
     @lru_cache(None)
     def response(self) -> type[ResponseClass]:
-        if self._response_class is not None:
-            parents = (self._response_class,)
-        else:
-            parents = (self.base, ResponseClass)
+        base = (
+            self._response_class
+            if self._response_class is not None
+            else self._base_class
+        )
         return self._class_creator(
-            self._base_class.__name__ + "Response", *parents
+            self._base_class.__name__ + "Response", *(base, ResponseClass)
         )
 
     @property
     @lru_cache(None)
     def patch(self) -> type[PatchClass]:
-        if self._patch_class is not None:
-            parents = (self._patch_class,)
-        else:
-            parents = (self.base, PatchClass)
+        base = (
+            self._patch_class
+            if self._patch_class is not None
+            else self._base_class
+        )
         return self._class_creator(
-            self._base_class.__name__ + "Optional", *parents
+            self._base_class.__name__ + "Optional", *(base, PatchClass)
         )
 
     @property
     @lru_cache(None)
     def query_filter(self) -> type[QueryFilterClass]:
+        base = (
+            self._query_class
+            if self._query_class is not None
+            else self._base_class
+        )
         return self._class_creator(
             self._base_class.__name__ + "Filter",
-            *(self._base_class, QueryFilterClass),
+            *(base, QueryFilterClass),
         )
 
     @property
     @lru_cache(None)
     def identity_filter(self) -> type[IdentityFilterClass]:
         return self._class_creator(
-            self._identifier.__name__ + "IdentityFilter",
-            *(self._identifier, IdentityFilterClass),
+            self._identity_class.__name__ + "IdentityFilter",
+            *(self._identity_class, IdentityFilterClass),
         )
 
 
