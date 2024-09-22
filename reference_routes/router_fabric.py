@@ -197,7 +197,7 @@ def generate_routes_pack(
         return None
 
     @router.patch(
-        "/{identifier}",
+        "/",
         response_class=Response,
         name=f"Change fields of {common_name} object",
         include_in_schema=Method.patch in allowed_methods,
@@ -232,7 +232,7 @@ def generate_routes_pack(
         await session.commit()
 
     @router.put(
-        "/{identifier}",
+        "/",
         response_class=Response,
         name=f"Change {common_name} object",
         include_in_schema=Method.put in allowed_methods,
@@ -263,7 +263,7 @@ def generate_routes_pack(
         await session.commit()
 
     @router.delete(
-        "/{identifier}",
+        "/",
         name=f"Delete {common_name} object",
         include_in_schema=Method.delete in allowed_methods,
     )
