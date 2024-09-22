@@ -133,7 +133,7 @@ def generate_routes_pack(
     )
     @db_exception_wrapper(IntegrityErrorException)
     async def create_common(
-        payload: fabric.base,
+        payload: fabric.create,
         method_crud: crud = Depends(get_crud),
         session: AsyncSession = Depends(get_session),
     ):

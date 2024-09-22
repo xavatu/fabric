@@ -62,12 +62,14 @@ class PydanticRouteModelsFabric:
         response_class: type[BasePydanticClass] = None,
         patch_class: type[BasePydanticClass] = None,
         query_class: type[BasePydanticClass] = None,
+        create_class: type[BasePydanticClass] = None,
     ):
         self._base_class = base_class
         self._identity_class = identity_class
         self._response_class = response_class
         self._patch_class = patch_class
         self._query_class = query_class
+        self._create_class = create_class
 
     @staticmethod
     def _class_creator(name, *bases: type[BaseModel]) -> _fabric_type:
@@ -77,6 +79,18 @@ class PydanticRouteModelsFabric:
     @property
     def base(self) -> type[BasePydanticClass]:
         return self._base_class
+
+    @property
+    @lru_cache(None)
+    def create(self) -> type[BasePydanticClass]:
+        base = (
+            self._create_class
+            if self._create_class is not None
+            else self._base_class
+        )
+        return self._class_creator(
+            self._base_class.__name__ + "Create", *(base,)
+        )
 
     @property
     @lru_cache(None)
