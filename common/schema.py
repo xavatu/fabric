@@ -1,6 +1,7 @@
+from copy import deepcopy
 from fastapi import Query
-from typing import Optional
-from pydantic import BaseModel
+from typing import Optional, Container
+from pydantic import BaseModel, ConfigDict, create_model
 from pydantic._internal._model_construction import ModelMetaclass
 
 
@@ -54,3 +55,23 @@ class AllQueryOptional(ModelMetaclass):
                 namespaces[field_name] = Query(None)
         namespaces["__annotations__"] = annotations
         return super().__new__(mcls, name, bases, namespaces, **kwargs)
+
+
+FromAttributesConfig = lambda: ConfigDict(from_attributes=True)
+
+
+def copy_schema(
+    base_schema: type[BaseModel],
+    name: str = None,
+    exclude: Container[str] = None,
+    config: ConfigDict = None,
+) -> type[BaseModel]:
+    exclude = exclude if exclude else []
+    config = config if config else deepcopy(base_schema.model_config)
+    fields = {
+        k: (v.annotation, v)
+        for k, v in base_schema.model_fields.items()
+        if k not in exclude
+    }
+    name = name if name else base_schema.__name__
+    return create_model(name, __config__=config, **fields)
