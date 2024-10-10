@@ -1,30 +1,17 @@
-import csv
 from enum import Enum
-from io import StringIO
-from typing import Callable, Awaitable
-
 from fastapi import (
     APIRouter,
     Depends,
     Response,
-    UploadFile,
-    File,
     HTTPException,
 )
-from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.concurrency import run_in_threadpool
 
-from fabric.reference_routes.route_schema import (
-    PydanticRouteModelsFabric,
-    CsvMode,
-    CsvError,
-)
+from fabric.reference_routes.route_schema import PydanticRouteModelsFabric
 from fabric.common.crud import (
     resolve_crud,
     CRUDBaseCommonMethodType,
     CrudType,
-    CRUDBase,
 )
 from fabric.exc import (
     NoResultFoundException,
@@ -38,7 +25,6 @@ class Method(str, Enum):
     get_all = "get_all"
     get_one = "get_one"
     post = "post"
-    csv = "csv"
     put = "put"
     patch = "patch"
     delete = "delete"
@@ -57,9 +43,6 @@ def generate_routes_pack(
     custom_route_awaitable: dict[Method, CRUDBaseCommonMethodType] = None,
     allowed_methods: list[Method] = None,
     excluded_methods: list[Method] = None,
-    csv_preparer: Callable[
-        [AsyncSession, dict[str, ...], CRUDBase], Awaitable[dict[str, ...]]
-    ] = None,
 ) -> APIRouter:
     tags = tags or [router_prefix.strip("/").replace("-", " ")]
     crud, get_crud = resolve_crud(crud)
@@ -147,54 +130,6 @@ def generate_routes_pack(
         )
         await session.commit()
         return result
-
-    def parse_csv(file: bytes) -> list[fabric.base]:
-        foo = StringIO(file.decode("utf-8"))
-        result = []
-        for row in csv.DictReader(foo):
-            try:
-                result.append(fabric.base(**row))
-            except ValidationError as e:
-                raise CsvError(row, e)
-        return result
-
-    @router.post(
-        "/csv",
-        response_class=Response,
-        name=f"Create {common_name} from csv",
-        include_in_schema=Method.csv in allowed_methods,
-    )
-    @db_exception_wrapper(IntegrityErrorException)
-    async def create_common_from_csv(
-        mode: CsvMode = CsvMode.merge,
-        method_crud: CRUDBase = Depends(get_crud),
-        session: AsyncSession = Depends(get_session),
-        file: UploadFile = File(..., media_type="text/csv"),
-    ):
-        not_found(Method.csv)
-        try:
-            data = await file.read()
-            csv_dict = await run_in_threadpool(parse_csv, data)
-        except CsvError as e:
-            raise HTTPException(
-                status_code=400,
-                detail={"row": e.row, "detail": e.validation_error.errors()},
-            )
-        except ValidationError as e:
-            raise HTTPException(status_code=400, detail=e.errors())
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-        finally:
-            await file.close()
-
-        if csv_preparer is not None:
-            csv_dict = await csv_preparer(session, csv_dict, method_crud)
-
-        await method_crud.bulk_merge_create(
-            session, obj_list=csv_dict, is_simple_insert=mode is CsvMode.insert
-        )
-        await session.commit()
-        return None
 
     @router.patch(
         "/",

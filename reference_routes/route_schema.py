@@ -3,8 +3,6 @@ from typing import NewType, TypeVar, TypeAlias
 from functools import lru_cache
 from pydantic import (
     BaseModel,
-    ValidationError,
-    validator,
     model_validator,
 )
 
@@ -136,31 +134,3 @@ class PydanticRouteModelsFabric:
             self._identity_class.__name__ + "IdentityFilter",
             *(self._identity_class, IdentityFilterClass),
         )
-
-
-class CsvError(Exception):
-    def __init__(self, row: dict, validation_error: ValidationError):
-        self.validation_error = validation_error
-        self.row = row
-        super().__init__(validation_error)
-
-
-class CsvMode(str, Enum):
-    insert = "insert"
-    merge = "merge"
-
-
-class CsvResult(BaseModel):
-    total_count: int = 0
-    inserted_count: int = 0
-    updated_count: int = 0
-
-    @staticmethod
-    def _get_length(value: list | int):
-        if isinstance(value, int):
-            return value
-        return len(value)
-
-    @validator("*", pre=True)
-    def count(cls, value):
-        return cls._get_length(value)
