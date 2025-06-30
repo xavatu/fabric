@@ -20,7 +20,7 @@ class GetAllRoute(RouteBase):
         response_schema = self.response_schema
 
         @router.get(
-            "",
+            "/all",
             response_model=List[response_schema],
         )
         async def get_all(
@@ -44,7 +44,7 @@ class GetOneRoute(RouteBase):
         response_schema = self.response_schema
 
         @router.get(
-            "/",
+            "",
             response_model=response_schema,
         )
         @db_exception_wrapper(NoResultFoundException)
@@ -66,7 +66,7 @@ class CreateRoute(RouteBase):
         request_schema = self.request_schema
         response_schema = self.response_schema
 
-        @router.post("/", response_model=response_schema)
+        @router.post("", response_model=response_schema)
         async def create(
             payload: request_schema,
             session: AsyncSession = Depends(get_session),
@@ -84,7 +84,7 @@ class UpdateRoute(RouteBase):
         request_schema = self.request_schema
         filter_schema = self.filter_schema
 
-        @router.put("/")
+        @router.put("")
         @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
         async def update(
             payload: request_schema,
@@ -111,7 +111,7 @@ class PatchRoute(RouteBase):
         request_schema = self.request_schema
         filter_schema = self.filter_schema
 
-        @router.patch("/")
+        @router.patch("")
         @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
         async def patch(
             payload: request_schema,
@@ -141,7 +141,7 @@ class DeleteRoute(RouteBase):
         crud = self.crud
         filter_schema = self.filter_schema
 
-        @router.delete("/")
+        @router.delete("")
         @db_exception_wrapper(NoResultFoundException, IntegrityErrorException)
         async def delete(
             identity_filter: filter_schema = Depends(filter_schema),
